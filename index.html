@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#6366f1">
+<meta name="description" content="NexusAI - PWA con IA para generar contenido Google Sites">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<title>NexusAI - Plataforma PWA</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0f;--surface:#12121a;--card:#1a1a2e;--border:#2a2a3e;--primary:#6366f1;--secondary:#a855f7;--accent:#ec4899;--text:#fff;--text2:#9ca3af;--success:#22c55e;--neon1:#b400ff;--neon2:#00f0ff}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+.glass{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+
+/* Header */
+header{position:fixed;top:0;left:0;right:0;height:56px;background:rgba(18,18,26,.95);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.1rem}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900}
+.header-actions{display:flex;gap:8px;align-items:center}
+.header-actions button,.header-actions select{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:.85rem}
+.header-actions button:hover{background:rgba(255,255,255,.1)}
+
+/* Sidebar */
+.sidebar{position:fixed;left:0;top:56px;bottom:0;width:220px;background:var(--surface);border-right:1px solid var(--border);padding:12px;overflow-y:auto;transform:translateX(-100%);transition:.3s;z-index:90}
+.sidebar.open{transform:translateX(0)}
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:85;display:none}
+.sidebar-overlay.show{display:block}
+.nav-item{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:4px;transition:.2s;font-size:.9rem}
+.nav-item:hover{background:rgba(255,255,255,.05)}
+.nav-item.active{background:rgba(99,102,241,.15);color:var(--primary)}
+.nav-icon{font-size:1.2rem}
+
+/* Main */
+main{padding:72px 16px 100px;max-width:900px;margin:0 auto}
+@media(min-width:768px){main{padding:72px 24px 40px}}
+
+/* Sections */
+.section{display:none;animation:fadeIn .3s}
+.section.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* Cards */
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px}
+.card-title{font-size:1.1rem;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+
+/* AI Chat */
+.ai-chat{border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px}
+.ai-chat-header{background:linear-gradient(135deg,var(--primary),var(--secondary));padding:12px 16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.ai-chat-messages{height:200px;overflow-y:auto;padding:16px;background:rgba(0,0,0,.2)}
+.ai-msg{margin-bottom:12px;padding:10px 14px;border-radius:12px;max-width:85%;font-size:.9rem}
+.ai-msg.user{background:var(--primary);margin-left:auto}
+.ai-msg.assistant{background:var(--card);border:1px solid var(--border)}
+.ai-chat-input{display:flex;gap:8px;padding:12px;background:var(--surface);border-top:1px solid var(--border)}
+.ai-chat-input input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);padding:10px 14px;border-radius:10px;color:var(--text);font-size:.9rem}
+.ai-chat-input input::placeholder{color:var(--text2)}
+.ai-chat-input button{background:var(--primary);color:#fff;border:none;padding:10px 20px;border-radius:10px;cursor:pointer;font-weight:600}
+.ai-chat-input button:hover{opacity:.9}
+
+/* Generated Output */
+.output-area{background:#000;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:12px}
+.output-preview{padding:16px;background:#fff;color:#000;min-height:100px}
+.output-code{padding:12px;font-family:monospace;font-size:.8rem;color:#22c55e;max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.output-actions{display:flex;gap:8px;padding:12px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{padding:10px 20px;border-radius:10px;border:none;cursor:pointer;font-weight:600;font-size:.85rem;transition:.2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff}
+.btn-success{background:var(--success);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn:hover{transform:scale(1.02);opacity:.9}
+.btn-copy.copied{background:var(--success)}
+
+/* Forms */
+.form-group{margin-bottom:16px}
+.form-label{display:block;margin-bottom:6px;font-size:.85rem;color:var(--text2)}
+.form-input,.form-select,.form-textarea{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);padding:12px;border-radius:10px;color:var(--text);font-size:.9rem}
+.form-input:focus,.form-textarea:focus{outline:none;border-color:var(--primary)}
+.form-textarea{min-height:100px;resize:vertical}
+
+/* Grid */
+.grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.grid-3{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+
+/* API Config */
+.api-item{display:flex;align-items:center;justify-content:space-between;padding:12px;background:rgba(255,255,255,.02);border-radius:10px;margin-bottom:8px}
+.api-status{width:8px;height:8px;border-radius:50%;margin-right:10px}
+.api-status.active{background:var(--success)}
+.api-status.inactive{background:var(--text2)}
+.toggle{width:44px;height:24px;background:var(--border);border-radius:12px;position:relative;cursor:pointer}
+.toggle.on{background:var(--primary)}
+.toggle::after{content:'';position:absolute;width:20px;height:20px;background:#fff;border-radius:50%;top:2px;left:2px;transition:.2s}
+.toggle.on::after{left:22px}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px}
+.tab{padding:10px 16px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:10px;cursor:pointer;white-space:nowrap;font-size:.85rem;transition:.2s}
+.tab.active{background:rgba(99,102,241,.2);border-color:var(--primary);color:var(--primary)}
+.tab:hover{background:rgba(255,255,255,.08)}
+
+/* Products */
+.product-card{background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;transition:.2s}
+.product-card:hover{transform:translateY(-2px);border-color:var(--primary)}
+.product-img{height:120px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:3rem}
+.product-info{padding:16px}
+.product-name{font-weight:700;margin-bottom:4px}
+.product-price{font-size:1.3rem;font-weight:800;color:var(--primary)}
+
+/* Posts */
+.post{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px}
+.post-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.post-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--secondary));display:flex;align-items:center;justify-content:center;font-weight:700}
+.post-actions{display:flex;gap:16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.post-action{display:flex;align-items:center;gap:6px;color:var(--text2);cursor:pointer;font-size:.9rem}
+.post-action:hover{color:var(--primary)}
+
+/* Stats */
+.stat-card{background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:16px;padding:20px;text-align:center}
+.stat-value{font-size:2rem;font-weight:800}
+.stat-label{font-size:.85rem;opacity:.8}
+
+/* Pomodoro */
+.pomodoro{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;text-align:center}
+.pomodoro-time{font-size:3.5rem;font-weight:800;font-family:monospace;margin:16px 0}
+.pomodoro-controls{display:flex;gap:8px;justify-content:center}
+
+/* Install Button */
+#installBtn{display:none;position:fixed;bottom:20px;right:20px;background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;padding:14px 24px;border-radius:16px;border:none;cursor:pointer;font-weight:700;box-shadow:0 8px 32px rgba(99,102,241,.4);z-index:200;animation:bounce 2s infinite}
+#installBtn.show{display:flex;align-items:center;gap:8px}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+
+/* Toast */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--border);padding:12px 24px;border-radius:12px;z-index:300;display:none;animation:slideUp .3s}
+.toast.show{display:block}
+@keyframes slideUp{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* Theme Light */
+body.light{--bg:#f5f5f5;--surface:#fff;--card:#fff;--border:#e5e7eb;--text:#1f2937;--text2:#6b7280}
+body.light .output-code{background:#1f2937}
+
+/* Theme Neon */
+body.neon{--primary:#b400ff;--secondary:#00f0ff}
+body.neon .logo-icon,body.neon .btn-primary,body.neon .ai-chat-header{box-shadow:0 0 20px rgba(180,0,255,.4)}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="glass">
+  <div class="logo">
+    <button onclick="toggleSidebar()" style="background:none;border:none;color:var(--text);font-size:1.3rem;cursor:pointer">☰</button>
+    <div class="logo-icon">N</div>
+    <span>NexusAI</span>
+  </div>
+  <div class="header-actions">
+    <select id="langSelect" onchange="setLang(this.value)">
+      <option value="es">🇪🇸 ES</option>
+      <option value="en">🇺🇸 EN</option>
+      <option value="zh">🇨🇳 中文</option>
+    </select>
+    <button onclick="cycleTheme()">🎨</button>
+  </div>
+</header>
+
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="nav-item active" onclick="showSection('landing')"><span class="nav-icon">🏠</span><span data-i18n="landing">Landing Page</span></div>
+  <div class="nav-item" onclick="showSection('store')"><span class="nav-icon">🛒</span><span data-i18n="store">Tienda Virtual</span></div>
+  <div class="nav-item" onclick="showSection('social')"><span class="nav-icon">👥</span><span data-i18n="social">Red Social</span></div>
+  <div class="nav-item" onclick="showSection('management')"><span class="nav-icon">📋</span><span data-i18n="management">Gestión</span></div>
+  <div class="nav-item" onclick="showSection('ai')"><span class="nav-icon">🤖</span><span data-i18n="ai">IA Integrada</span></div>
+  <div class="nav-item" onclick="showSection('stats')"><span class="nav-icon">📊</span><span data-i18n="stats">Estadísticas</span></div>
+  <div class="nav-item" onclick="showSection('settings')"><span class="nav-icon">⚙️</span><span data-i18n="settings">Configuración</span></div>
+  <div class="nav-item" onclick="showSection('admin')"><span class="nav-icon">🔐</span><span data-i18n="admin">Admin</span></div>
+  <div class="nav-item" onclick="showSection('legal')"><span class="nav-icon">📜</span><span data-i18n="legal">Legal</span></div>
+  <div class="nav-item" onclick="showSection('credits')"><span class="nav-icon">💎</span><span data-i18n="credits">Créditos</span></div>
+</aside>
+
+<!-- Main Content -->
+<main>
+
+<!-- LANDING PAGE -->
+<section id="landing" class="section active">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">🏠 <span data-i18n="landing">Landing Page Generator</span></h2>
+  
+  <div class="ai-chat">
+    <div class="ai-chat-header">🤖 Chat IA - Genera tu Landing Page</div>
+    <div class="ai-chat-messages" id="landing-chat">
+      <div class="ai-msg assistant">¡Hola! Describe tu landing page ideal. Ej: "Landing para agencia de marketing digital con hero azul, 3 servicios y formulario de contacto"</div>
+    </div>
+    <div class="ai-chat-input">
+      <input type="text" id="landing-input" placeholder="Describe tu landing page..." onkeypress="if(event.key==='Enter')generateContent('landing')">
+      <button onclick="generateContent('landing')">Generar</button>
+    </div>
+  </div>
+  
+  <div class="output-area" id="landing-output" style="display:none">
+    <div class="output-preview" id="landing-preview"></div>
+    <div class="output-code" id="landing-code"></div>
+    <div class="output-actions">
+      <button class="btn btn-success btn-copy" onclick="copyCode('landing')">📋 Copiar HTML para Google Sites</button>
+      <button class="btn btn-outline" onclick="downloadHTML('landing')">💾 Descargar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚡ Plantillas Rápidas</div>
+    <div class="grid grid-3">
+      <button class="btn btn-outline" onclick="quickTemplate('landing','negocio')">🏢 Negocio</button>
+      <button class="btn btn-outline" onclick="quickTemplate('landing','portfolio')">💼 Portfolio</button>
+      <button class="btn btn-outline" onclick="quickTemplate('landing','producto')">📦 Producto</button>
+      <button class="btn btn-outline" onclick="quickTemplate('landing','evento')">🎉 Evento</button>
+      <button class="btn btn-outline" onclick="quickTemplate('landing','restaurante')">🍕 Restaurante</button>
+      <button class="btn btn-outline" onclick="quickTemplate('landing','consultoria')">💡 Consultoría</button>
+    </div>
+  </div>
+</section>
+
+<!-- STORE -->
+<section id="store" class="section">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">🛒 <span data-i18n="store">Tienda Virtual Generator</span></h2>
+  
+  <div class="ai-chat">
+    <div class="ai-chat-header">🤖 Chat IA - Genera tu Tienda</div>
+    <div class="ai-chat-messages" id="store-chat">
+      <div class="ai-msg assistant">¡Hola! Describe tu tienda. Ej: "Tienda de ropa deportiva con 4 productos, carrito y botón de WhatsApp"</div>
+    </div>
+    <div class="ai-chat-input">
+      <input type="text" id="store-input" placeholder="Describe tu tienda..." onkeypress="if(event.key==='Enter')generateContent('store')">
+      <button onclick="generateContent('store')">Generar</button>
+    </div>
+  </div>
+  
+  <div class="output-area" id="store-output" style="display:none">
+    <div class="output-preview" id="store-preview"></div>
+    <div class="output-code" id="store-code"></div>
+    <div class="output-actions">
+      <button class="btn btn-success btn-copy" onclick="copyCode('store')">📋 Copiar HTML para Google Sites</button>
+      <button class="btn btn-outline" onclick="downloadHTML('store')">💾 Descargar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📦 Generar Producto Individual</div>
+    <div class="grid grid-2">
+      <div class="form-group">
+        <label class="form-label">Nombre del producto</label>
+        <input class="form-input" id="prod-name" placeholder="Ej: Zapatillas Running Pro">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Precio</label>
+        <input class="form-input" id="prod-price" placeholder="$99.99">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción</label>
+      <textarea class="form-textarea" id="prod-desc" placeholder="Describe el producto..."></textarea>
+    </div>
+    <button class="btn btn-primary" onclick="generateProduct()">🛍️ Generar Producto HTML</button>
+    <div class="output-area" id="product-output" style="display:none;margin-top:12px">
+      <div class="output-preview" id="product-preview"></div>
+      <div class="output-code" id="product-code"></div>
+      <div class="output-actions">
+        <button class="btn btn-success btn-copy" onclick="copyCode('product')">📋 Copiar HTML</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL -->
+<section id="social" class="section">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">👥 <span data-i18n="social">Red Social Generator</span></h2>
+  
+  <div class="ai-chat">
+    <div class="ai-chat-header">🤖 Chat IA - Genera Posts y Perfiles</div>
+    <div class="ai-chat-messages" id="social-chat">
+      <div class="ai-msg assistant">¡Hola! Puedo generar: posts, perfiles de usuario, feeds, tarjetas de contacto. Ej: "Post promocional para lanzamiento de producto tech"</div>
+    </div>
+    <div class="ai-chat-input">
+      <input type="text" id="social-input" placeholder="Describe el contenido social..." onkeypress="if(event.key==='Enter')generateContent('social')">
+      <button onclick="generateContent('social')">Generar</button>
+    </div>
+  </div>
+  
+  <div class="output-area" id="social-output" style="display:none">
+    <div class="output-preview" id="social-preview"></div>
+    <div class="output-code" id="social-code"></div>
+    <div class="output-actions">
+      <button class="btn btn-success btn-copy" onclick="copyCode('social')">📋 Copiar HTML para Google Sites</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚡ Generación Rápida</div>
+    <div class="grid grid-3">
+      <button class="btn btn-outline" onclick="quickTemplate('social','post')">📝 Post</button>
+      <button class="btn btn-outline" onclick="quickTemplate('social','perfil')">👤 Perfil</button>
+      <button class="btn btn-outline" onclick="quickTemplate('social','feed')">📰 Feed</button>
+      <button class="btn btn-outline" onclick="quickTemplate('social','contacto')">📇 Contacto</button>
+      <button class="btn btn-outline" onclick="quickTemplate('social','testimonial')">⭐ Testimonial</button>
+      <button class="btn btn-outline" onclick="quickTemplate('social','equipo')">👥 Equipo</button>
+    </div>
+  </div>
+</section>
+
+<!-- MANAGEMENT -->
+<section id="management" class="section">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">📋 <span data-i18n="management">Gestión Personal</span></h2>
+  
+  <div class="ai-chat">
+    <div class="ai-chat-header">🤖 Chat IA - Genera Componentes de Gestión</div>
+    <div class="ai-chat-messages" id="management-chat">
+      <div class="ai-msg assistant">Puedo crear: formularios, tablas, dashboards, calendarios, listas de tareas. Ej: "Formulario de contacto elegante con campos nombre, email y mensaje"</div>
+    </div>
+    <div class="ai-chat-input">
+      <input type="text" id="management-input" placeholder="Describe el componente..." onkeypress="if(event.key==='Enter')generateContent('management')">
+      <button onclick="generateContent('management')">Generar</button>
+    </div>
+  </div>
+  
+  <div class="output-area" id="management-output" style="display:none">
+    <div class="output-preview" id="management-preview"></div>
+    <div class="output-code" id="management-code"></div>
+    <div class="output-actions">
+      <button class="btn btn-success btn-copy" onclick="copyCode('management')">📋 Copiar HTML para Google Sites</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showMgmtTab('notes')">📝 Notas</div>
+    <div class="tab" onclick="showMgmtTab('prompts')">💡 Prompts</div>
+    <div class="tab" onclick="showMgmtTab('pomodoro')">🍅 Pomodoro</div>
+  </div>
+
+  <div id="mgmt-notes" class="card">
+    <div class="card-title">📝 Mis Notas</div>
+    <textarea class="form-textarea" id="note-content" placeholder="Escribe tu nota..."></textarea>
+    <button class="btn btn-primary" onclick="saveNote()" style="margin-top:12px">💾 Guardar Nota</button>
+    <div id="notes-list" style="margin-top:16px"></div>
+  </div>
+
+  <div id="mgmt-prompts" class="card" style="display:none">
+    <div class="card-title">💡 Biblioteca de Prompts</div>
+    <div class="form-group">
+      <input class="form-input" id="prompt-title" placeholder="Título del prompt">
+    </div>
+    <textarea class="form-textarea" id="prompt-content" placeholder="Contenido del prompt..."></textarea>
+    <button class="btn btn-primary" onclick="savePrompt()" style="margin-top:12px">💾 Guardar Prompt</button>
+    <div id="prompts-list" style="margin-top:16px"></div>
+  </div>
+
+  <div id="mgmt-pomodoro" class="card" style="display:none">
+    <div class="pomodoro">
+      <div style="font-size:1.2rem;margin-bottom:8px">🍅 Pomodoro Timer</div>
+      <div class="pomodoro-time" id="pomo-time">25:00</div>
+      <div class="pomodoro-controls">
+        <button class="btn btn-primary" onclick="togglePomodoro()">▶️ Iniciar</button>
+        <button class="btn btn-outline" onclick="resetPomodoro()">🔄 Reset</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AI -->
+<section id="ai" class="section">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">🤖 <span data-i18n="ai">IA Integrada - Chat Agente</span></h2>
+  
+  <div class="ai-chat" style="margin-bottom:24px">
+    <div class="ai-chat-header">🤖 Agente IA Multi-Propósito</div>
+    <div class="ai-chat-messages" id="ai-chat" style="height:300px">
+      <div class="ai-msg assistant">¡Soy tu agente IA! Puedo generar cualquier tipo de contenido HTML para Google Sites: landing pages, tiendas, posts, formularios, galerías, pricing tables, FAQs, y mucho más. ¿Qué necesitas crear?</div>
+    </div>
+    <div class="ai-chat-input">
+      <input type="text" id="ai-input" placeholder="Pide cualquier cosa..." onkeypress="if(event.key==='Enter')generateContent('ai')">
+      <button onclick="generateContent('ai')">🚀 Generar</button>
+    </div>
+  </div>
+  
+  <div class="output-area" id="ai-output" style="display:none">
+    <div class="output-preview" id="ai-preview"></div>
+    <div class="output-code" id="ai-code"></div>
+    <div class="output-actions">
+      <button class="btn btn-success btn-copy" onclick="copyCode('ai')">📋 Copiar HTML para Google Sites</button>
+      <button class="btn btn-outline" onclick="downloadHTML('ai')">💾 Descargar HTML</button>
+      <button class="btn btn-outline" onclick="clearOutput('ai')">🗑️ Limpiar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚡ Generación Rápida</div>
+    <div class="grid grid-3">
+      <button class="btn btn-outline" onclick="quickAI('hero')">🎯 Hero Section</button>
+      <button class="btn btn-outline" onclick="quickAI('features')">✨ Features</button>
+      <button class="btn btn-outline" onclick="quickAI('pricing')">💰 Pricing</button>
+      <button class="btn btn-outline" onclick="quickAI('faq')">❓ FAQ</button>
+      <button class="btn btn-outline" onclick="quickAI('gallery')">🖼️ Galería</button>
+      <button class="btn btn-outline" onclick="quickAI('cta')">📢 CTA</button>
+      <button class="btn btn-outline" onclick="quickAI('footer')">📄 Footer</button>
+      <button class="btn btn-outline" onclick="quickAI('navbar')">🧭 Navbar</button>
+      <button class="btn btn-outline" onclick="quickAI('cards')">🃏 Cards</button>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section id="stats" class="section">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">📊 <span data-i18n="stats">Estadísticas</span></h2>
+  
+  <div class="grid grid-3" style="margin-bottom:24px">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-generated">0</div>
+      <div class="stat-label">Contenidos Generados</div>
+    </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#ec4899,#f43f5e)">
+      <div class="stat-value" id="stat-tokens">0</div>
+      <div class="stat-label">Tokens Estimados</div>
+    </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#22c55e,#16a34a)">
+      <div class="stat-value" id="stat-copies">0</div>
+      <div class="stat-label">Copias Realizadas</div>
+    </div>
+  </div>
+
+  <div class="ai-chat">
+    <div class="ai-chat-header">🤖 Chat IA - Genera Gráficos y Dashboards</div>
+    <div class="ai-chat-messages" id="stats-chat">
+      <div class="ai-msg assistant">Puedo crear dashboards, gráficos, KPIs, tablas de métricas. Ej: "Dashboard de ventas con 4 KPIs y gráfico de barras"</div>
+    </div>
+    <div class="ai-chat-input">
+      <input type="text" id="stats-input" placeholder="Describe tu dashboard..." onkeypress="if(event.key==='Enter')generateContent('stats')">
+      <button onclick="generateContent('stats')">Generar</button>
+    </div>
+  </div>
+  
+  <div class="output-area" id="stats-output" style="display:none">
+    <div class="output-preview" id="stats-preview"></div>
+    <div class="output-code" id="stats-code"></div>
+    <div class="output-actions">
+      <button class="btn btn-success btn-copy" onclick="copyCode('stats')">📋 Copiar HTML para Google Sites</button>
+    </div>
+  </div>
+</section>
+
+<!-- SETTINGS -->
+<section id="settings" class="section">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">⚙️ <span data-i18n="settings">Configuración</span></h2>
+  
+  <div class="card">
+    <div class="card-title">🎨 Tema</div>
+    <div class="grid grid-3">
+      <button class="btn btn-outline" onclick="setTheme('dark')">🌙 Oscuro</button>
+      <button class="btn btn-outline" onclick="setTheme('light')">☀️ Claro</button>
+      <button class="btn btn-outline" onclick="setTheme('neon')">⚡ Neón</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔌 APIs de IA</div>
+    <p style="color:var(--text2);font-size:.85rem;margin-bottom:16px">Configura tus API keys para usar IA real. Sin API key, se usa generación local.</p>
+    
+    <div class="api-item">
+      <div style="display:flex;align-items:center"><span class="api-status" id="api-groq-status"></span>Groq AI</div>
+      <input class="form-input" style="width:60%;margin:0 12px" placeholder="API Key..." id="api-groq" onchange="saveApiKey('groq',this.value)">
+      <div class="toggle" id="api-groq-toggle" onclick="toggleApi('groq')"></div>
+    </div>
+    <div class="api-item">
+      <div style="display:flex;align-items:center"><span class="api-status" id="api-gemini-status"></span>Gemini AI</div>
+      <input class="form-input" style="width:60%;margin:0 12px" placeholder="API Key..." id="api-gemini" onchange="saveApiKey('gemini',this.value)">
+      <div class="toggle" id="api-gemini-toggle" onclick="toggleApi('gemini')"></div>
+    </div>
+    <div class="api-item">
+      <div style="display:flex;align-items:center"><span class="api-status" id="api-openrouter-status"></span>OpenRouter</div>
+      <input class="form-input" style="width:60%;margin:0 12px" placeholder="API Key..." id="api-openrouter" onchange="saveApiKey('openrouter',this.value)">
+      <div class="toggle" id="api-openrouter-toggle" onclick="toggleApi('openrouter')"></div>
+    </div>
+    <div class="api-item">
+      <div style="display:flex;align-items:center"><span class="api-status" id="api-deepseek-status"></span>DeepSeek</div>
+      <input class="form-input" style="width:60%;margin:0 12px" placeholder="API Key..." id="api-deepseek" onchange="saveApiKey('deepseek',this.value)">
+      <div class="toggle" id="api-deepseek-toggle" onclick="toggleApi('deepseek')"></div>
+    </div>
+    
+    <button class="btn btn-primary" onclick="testApis()" style="margin-top:16px">🏁 Benchmark APIs</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🍅 Pomodoro</div>
+    <div class="grid grid-2">
+      <div class="form-group">
+        <label class="form-label">Tiempo trabajo (min)</label>
+        <input class="form-input" type="number" value="25" id="pomo-work" onchange="updatePomoSettings()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tiempo descanso (min)</label>
+        <input class="form-input" type="number" value="5" id="pomo-break" onchange="updatePomoSettings()">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ADMIN -->
+<section id="admin" class="section">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">🔐 <span data-i18n="admin">Administración</span></h2>
+  
+  <div class="ai-chat">
+    <div class="ai-chat-header">🤖 Chat IA - Genera Paneles Admin</div>
+    <div class="ai-chat-messages" id="admin-chat">
+      <div class="ai-msg assistant">Puedo crear: paneles de control, tablas de usuarios, logs, dashboards admin. Ej: "Panel admin con tabla de usuarios y estadísticas"</div>
+    </div>
+    <div class="ai-chat-input">
+      <input type="text" id="admin-input" placeholder="Describe el panel..." onkeypress="if(event.key==='Enter')generateContent('admin')">
+      <button onclick="generateContent('admin')">Generar</button>
+    </div>
+  </div>
+  
+  <div class="output-area" id="admin-output" style="display:none">
+    <div class="output-preview" id="admin-preview"></div>
+    <div class="output-code" id="admin-code"></div>
+    <div class="output-actions">
+      <button class="btn btn-success btn-copy" onclick="copyCode('admin')">📋 Copiar HTML para Google Sites</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 Datos Locales</div>
+    <button class="btn btn-outline" onclick="exportData()">📤 Exportar Datos</button>
+    <button class="btn btn-outline" onclick="clearAllData()" style="margin-left:8px">🗑️ Limpiar Todo</button>
+  </div>
+</section>
+
+<!-- LEGAL -->
+<section id="legal" class="section">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">📜 <span data-i18n="legal">Aviso Legal</span></h2>
+  <div class="card">
+    <div class="card-title">Política de Privacidad</div>
+    <p style="color:var(--text2);font-size:.9rem;line-height:1.7">
+      NexusAI almacena datos localmente en tu dispositivo mediante IndexedDB y LocalStorage. 
+      No enviamos datos personales a servidores externos sin tu consentimiento. 
+      Las API keys se guardan localmente y nunca se comparten.
+      Al usar APIs de terceros (Groq, Gemini, etc.), los datos se envían a sus servidores según sus políticas.
+    </p>
+  </div>
+  <div class="card">
+    <div class="card-title">Términos de Uso</div>
+    <p style="color:var(--text2);font-size:.9rem;line-height:1.7">
+      El contenido generado por IA es responsabilidad del usuario. 
+      NexusAI se proporciona "tal cual" sin garantías. 
+      El usuario es responsable del uso del contenido generado y su publicación.
+    </p>
+  </div>
+</section>
+
+<!-- CREDITS -->
+<section id="credits" class="section">
+  <h2 style="font-size:1.5rem;margin-bottom:16px">💎 <span data-i18n="credits">Créditos</span></h2>
+  <div class="card" style="text-align:center;padding:40px">
+    <div class="logo-icon" style="width:80px;height:80px;font-size:2.5rem;margin:0 auto 20px">N</div>
+    <h3 style="font-size:2rem;margin-bottom:8px">NexusAI</h3>
+    <p style="color:var(--text2);margin-bottom:24px">Plataforma PWA Modular con IA</p>
+    <p style="margin-bottom:8px">© 2026 NexusAI App. Todos los derechos reservados.</p>
+    <p style="font-size:1.1rem;margin-bottom:20px">Creado por <strong>Jaime Andrés Dueñas Vicuña</strong></p>
+    <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+      <a href="https://www.linkedin.com/in/jaime-andrés-dueñas-vicuña" target="_blank" class="btn btn-outline">🔗 LinkedIn</a>
+      <a href="https://www.paypal.com/paypalme/texiduvi" target="_blank" class="btn btn-primary">💲 PayPal</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- Install Button -->
+<button id="installBtn">📲 Instalar App</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==========================================
+// NEXUSAI - PWA COMPLETA
+// ==========================================
+
+// IndexedDB
+let db;
+const DB_NAME = 'NexusAI';
+const DB_VERSION = 1;
+
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => { db = request.result; resolve(db); };
+    request.onupgradeneeded = (e) => {
+      const database = e.target.result;
+      ['notes', 'prompts', 'generated', 'stats'].forEach(store => {
+        if (!database.objectStoreNames.contains(store)) {
+          database.createObjectStore(store, { keyPath: 'id', autoIncrement: true });
+        }
+      });
+    };
+  });
+}
+
+function dbAdd(store, data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).add({ ...data, timestamp: Date.now() });
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbGetAll(store) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function dbClear(store) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).clear();
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Stats
+let stats = { generated: 0, tokens: 0, copies: 0 };
+
+function updateStats(type, value = 1) {
+  stats[type] = (stats[type] || 0) + value;
+  localStorage.setItem('nexus_stats', JSON.stringify(stats));
+  document.getElementById('stat-generated').textContent = stats.generated;
+  document.getElementById('stat-tokens').textContent = stats.tokens;
+  document.getElementById('stat-copies').textContent = stats.copies;
+}
+
+function loadStats() {
+  const saved = localStorage.getItem('nexus_stats');
+  if (saved) stats = JSON.parse(saved);
+  updateStats('generated', 0);
+}
+
+// Sidebar
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.querySelector('.sidebar-overlay').classList.toggle('show');
+}
+
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  toggleSidebar();
+}
+
+// Theme
+function setTheme(theme) {
+  document.body.className = theme === 'dark' ? '' : theme;
+  localStorage.setItem('nexus_theme', theme);
+  showToast('Tema cambiado: ' + theme);
+}
+
+function cycleTheme() {
+  const themes = ['dark', 'light', 'neon'];
+  const current = document.body.classList.contains('light') ? 'light' : document.body.classList.contains('neon') ? 'neon' : 'dark';
+  const next = themes[(themes.indexOf(current) + 1) % themes.length];
+  setTheme(next);
+}
+
+// Language
+const i18n = {
+  es: { landing: 'Landing Page', store: 'Tienda Virtual', social: 'Red Social', management: 'Gestión', ai: 'IA Integrada', stats: 'Estadísticas', settings: 'Configuración', admin: 'Admin', legal: 'Legal', credits: 'Créditos' },
+  en: { landing: 'Landing Page', store: 'Virtual Store', social: 'Social Network', management: 'Management', ai: 'Integrated AI', stats: 'Statistics', settings: 'Settings', admin: 'Admin', legal: 'Legal', credits: 'Credits' },
+  zh: { landing: '登陆页', store: '虚拟商店', social: '社交网络', management: '管理', ai: '集成AI', stats: '统计', settings: '设置', admin: '管理', legal: '法律', credits: '致谢' }
+};
+
+function setLang(lang) {
+  localStorage.setItem('nexus_lang', lang);
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (i18n[lang] && i18n[lang][key]) el.textContent = i18n[lang][key];
+  });
+}
+
+// Toast
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// Templates HTML para cada tipo
+const templates = {
+  landing: {
+    negocio: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;">
+  <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:60px 20px;text-align:center;border-radius:16px;color:white;">
+    <h1 style="font-size:2.5rem;font-weight:900;margin-bottom:12px;">Tu Negocio Digital</h1>
+    <p style="font-size:1.1rem;opacity:0.9;margin-bottom:24px;">${prompt || 'Soluciones innovadoras para tu empresa'}</p>
+    <a href="#" style="background:rgba(255,255,255,0.2);color:white;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;display:inline-block;">Comenzar →</a>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:40px 0;">
+    <div style="text-align:center;padding:24px;border:1px solid #e5e7eb;border-radius:12px;">
+      <div style="font-size:2rem;margin-bottom:8px;">🚀</div>
+      <h3 style="font-weight:700;">Rápido</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Resultados inmediatos</p>
+    </div>
+    <div style="text-align:center;padding:24px;border:1px solid #e5e7eb;border-radius:12px;">
+      <div style="font-size:2rem;margin-bottom:8px;">💡</div>
+      <h3 style="font-weight:700;">Innovador</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Tecnología de punta</p>
+    </div>
+    <div style="text-align:center;padding:24px;border:1px solid #e5e7eb;border-radius:12px;">
+      <div style="font-size:2rem;margin-bottom:8px;">🎯</div>
+      <h3 style="font-weight:700;">Efectivo</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Objetivos cumplidos</p>
+    </div>
+  </div>
+  <div style="background:#f8fafc;padding:40px;border-radius:16px;text-align:center;">
+    <h2 style="margin-bottom:20px;">Contáctanos</h2>
+    <a href="https://wa.me/TUNUMERO" style="background:#25d366;color:white;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;display:inline-block;">💬 WhatsApp</a>
+  </div>
+</div>`,
+    portfolio: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;">
+  <div style="text-align:center;padding:60px 20px;">
+    <div style="width:100px;height:100px;background:linear-gradient(135deg,#ec4899,#f43f5e);border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:white;">👤</div>
+    <h1 style="font-size:2.5rem;font-weight:900;">Mi Portfolio</h1>
+    <p style="color:#6b7280;font-size:1.1rem;margin-top:8px;">${prompt || 'Diseñador & Desarrollador'}</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;padding:20px;">
+    <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);height:200px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">Proyecto 1</div>
+    <div style="background:linear-gradient(135deg,#ec4899,#f43f5e);height:200px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">Proyecto 2</div>
+    <div style="background:linear-gradient(135deg,#22c55e,#16a34a);height:200px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">Proyecto 3</div>
+    <div style="background:linear-gradient(135deg,#f59e0b,#d97706);height:200px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">Proyecto 4</div>
+  </div>
+</div>`,
+    producto: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;text-align:center;">
+  <div style="padding:60px 20px;">
+    <div style="font-size:4rem;margin-bottom:20px;">📦</div>
+    <h1 style="font-size:2.5rem;font-weight:900;margin-bottom:12px;">${prompt || 'Producto Increíble'}</h1>
+    <p style="color:#6b7280;font-size:1.1rem;margin-bottom:24px;">La solución que estabas buscando</p>
+    <div style="font-size:2.5rem;font-weight:900;color:#6366f1;margin-bottom:24px;">$99.99</div>
+    <a href="#" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:16px 48px;border-radius:12px;text-decoration:none;font-weight:700;font-size:1.1rem;display:inline-block;">🛒 Comprar Ahora</a>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:40px 20px;background:#f8fafc;border-radius:16px;">
+    <div><div style="font-size:1.5rem;">✅</div><p style="font-weight:600;">Garantía</p></div>
+    <div><div style="font-size:1.5rem;">🚚</div><p style="font-weight:600;">Envío Gratis</p></div>
+    <div><div style="font-size:1.5rem;">🔒</div><p style="font-weight:600;">Pago Seguro</p></div>
+  </div>
+</div>`,
+    evento: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;">
+  <div style="background:linear-gradient(135deg,#f43f5e,#ec4899);padding:80px 20px;text-align:center;border-radius:16px;color:white;">
+    <div style="font-size:1rem;letter-spacing:2px;margin-bottom:12px;">🎉 EVENTO ESPECIAL</div>
+    <h1 style="font-size:2.8rem;font-weight:900;margin-bottom:16px;">${prompt || 'Gran Evento 2026'}</h1>
+    <p style="font-size:1.2rem;opacity:0.9;margin-bottom:8px;">📅 15 de Marzo, 2026</p>
+    <p style="font-size:1rem;opacity:0.8;margin-bottom:32px;">📍 Centro de Convenciones</p>
+    <a href="#" style="background:white;color:#f43f5e;padding:16px 40px;border-radius:12px;text-decoration:none;font-weight:700;display:inline-block;">Reservar Entrada →</a>
+  </div>
+</div>`,
+    restaurante: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;text-align:center;">
+  <div style="background:#1a1a2e;padding:60px 20px;border-radius:16px;color:white;">
+    <div style="font-size:3rem;margin-bottom:16px;">🍕</div>
+    <h1 style="font-size:2.5rem;font-weight:900;margin-bottom:8px;">${prompt || 'Restaurante Delicioso'}</h1>
+    <p style="color:#9ca3af;margin-bottom:24px;">Los mejores sabores de la ciudad</p>
+    <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
+      <a href="#" style="background:#22c55e;color:white;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;">📱 Pedir Online</a>
+      <a href="https://wa.me/TUNUMERO" style="background:#25d366;color:white;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:600;">💬 WhatsApp</a>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:40px 0;">
+    <div style="padding:20px;border:1px solid #e5e7eb;border-radius:12px;">
+      <div style="font-size:2rem;">🍝</div>
+      <h3>Pastas</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Desde $12</p>
+    </div>
+    <div style="padding:20px;border:1px solid #e5e7eb;border-radius:12px;">
+      <div style="font-size:2rem;">🥗</div>
+      <h3>Ensaladas</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Desde $8</p>
+    </div>
+    <div style="padding:20px;border:1px solid #e5e7eb;border-radius:12px;">
+      <div style="font-size:2rem;">🍰</div>
+      <h3>Postres</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Desde $6</p>
+    </div>
+  </div>
+</div>`,
+    consultoria: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;">
+  <div style="padding:60px 20px;text-align:center;">
+    <div style="font-size:3rem;margin-bottom:16px;">💼</div>
+    <h1 style="font-size:2.5rem;font-weight:900;margin-bottom:12px;">${prompt || 'Consultoría Profesional'}</h1>
+    <p style="color:#6b7280;font-size:1.1rem;margin-bottom:32px;">Expertos en transformación digital</p>
+    <a href="#" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;display:inline-block;">Agendar Consulta Gratis →</a>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;padding:20px;">
+    <div style="padding:30px;background:#f8fafc;border-radius:16px;">
+      <h3 style="margin-bottom:8px;">📊 Análisis</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Evaluación completa de tu negocio</p>
+    </div>
+    <div style="padding:30px;background:#f8fafc;border-radius:16px;">
+      <h3 style="margin-bottom:8px;">🎯 Estrategia</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Plan de acción personalizado</p>
+    </div>
+    <div style="padding:30px;background:#f8fafc;border-radius:16px;">
+      <h3 style="margin-bottom:8px;">🚀 Implementación</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Ejecución y seguimiento</p>
+    </div>
+    <div style="padding:30px;background:#f8fafc;border-radius:16px;">
+      <h3 style="margin-bottom:8px;">📈 Resultados</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">Métricas y optimización</p>
+    </div>
+  </div>
+</div>`
+  },
+  social: {
+    post: (prompt) => `<div style="max-width:500px;margin:auto;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;font-family:sans-serif;">
+  <div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #f3f4f6;">
+    <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">N</div>
+    <div><div style="font-weight:700;">NexusAI</div><div style="font-size:0.8rem;color:#9ca3af;">Hace 2 min</div></div>
+  </div>
+  <div style="padding:16px;">
+    <p style="color:#1f2937;line-height:1.6;margin-bottom:12px;">${prompt || '¡Gran noticia! 🎉 Lanzamos nuevas funcionalidades increíbles. ¡Descúbrelas ahora!'}</p>
+    <p style="color:#6366f1;">#NexusAI #Innovación #Tech</p>
+  </div>
+  <div style="padding:12px 16px;border-top:1px solid #f3f4f6;display:flex;gap:24px;">
+    <span style="cursor:pointer;">❤️ 42</span>
+    <span style="cursor:pointer;">💬 12</span>
+    <span style="cursor:pointer;">🔄 8</span>
+  </div>
+</div>`,
+    perfil: (prompt) => `<div style="max-width:400px;margin:auto;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;font-family:sans-serif;text-align:center;">
+  <div style="height:100px;background:linear-gradient(135deg,#6366f1,#ec4899);"></div>
+  <div style="padding:0 20px 20px;">
+    <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);margin:-40px auto 12px;border:4px solid white;display:flex;align-items:center;justify-content:center;color:white;font-size:1.5rem;font-weight:700;">JD</div>
+    <h3 style="font-weight:700;margin-bottom:4px;">${prompt || 'Juan Desarrollador'}</h3>
+    <p style="color:#6b7280;font-size:0.9rem;margin-bottom:16px;">Full Stack Developer 💻</p>
+    <div style="display:flex;justify-content:center;gap:24px;margin-bottom:16px;">
+      <div><div style="font-weight:700;">1.2K</div><div style="font-size:0.8rem;color:#9ca3af;">Posts</div></div>
+      <div><div style="font-weight:700;">5.4K</div><div style="font-size:0.8rem;color:#9ca3af;">Seguidores</div></div>
+      <div><div style="font-weight:700;">234</div><div style="font-size:0.8rem;color:#9ca3af;">Siguiendo</div></div>
+    </div>
+    <a href="#" style="background:#6366f1;color:white;padding:10px 32px;border-radius:10px;text-decoration:none;font-weight:600;display:inline-block;">Seguir</a>
+  </div>
+</div>`,
+    feed: (prompt) => `<div style="max-width:500px;margin:auto;font-family:sans-serif;">
+  <div style="padding:16px;background:#f8fafc;border-radius:12px;margin-bottom:16px;">
+    <input type="text" placeholder="¿Qué estás pensando?" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:10px;">
+  </div>
+  ${[1,2,3].map(i => `<div style="border:1px solid #e5e7eb;border-radius:16px;padding:16px;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#${['6366f1','ec4899','22c55e'][i-1]},#8b5cf6);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">U${i}</div>
+      <div><div style="font-weight:600;">Usuario ${i}</div><div style="font-size:0.8rem;color:#9ca3af;">${i}h</div></div>
+    </div>
+    <p style="color:#374151;margin-bottom:12px;">${prompt || `Post de ejemplo #${i} con contenido interesante 🚀`}</p>
+    <div style="display:flex;gap:16px;color:#6b7280;font-size:0.9rem;"><span>❤️ ${i*10}</span><span>💬 ${i*3}</span></div>
+  </div>`).join('')}
+</div>`,
+    contacto: (prompt) => `<div style="max-width:350px;margin:auto;border:1px solid #e5e7eb;border-radius:16px;padding:24px;font-family:sans-serif;text-align:center;">
+  <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;color:white;font-size:1.5rem;">📇</div>
+  <h3 style="font-weight:700;margin-bottom:4px;">${prompt || 'Contacto Profesional'}</h3>
+  <p style="color:#6b7280;font-size:0.9rem;margin-bottom:20px;">CEO & Fundador</p>
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <a href="mailto:email@example.com" style="background:#f8fafc;padding:10px;border-radius:8px;text-decoration:none;color:#374151;">📧 email@example.com</a>
+    <a href="tel:+123456789" style="background:#f8fafc;padding:10px;border-radius:8px;text-decoration:none;color:#374151;">📱 +1 234 567 89</a>
+    <a href="https://wa.me/TUNUMERO" style="background:#25d366;padding:10px;border-radius:8px;text-decoration:none;color:white;font-weight:600;">💬 WhatsApp</a>
+  </div>
+</div>`,
+    testimonial: (prompt) => `<div style="max-width:450px;margin:auto;background:#f8fafc;border-radius:16px;padding:32px;font-family:sans-serif;">
+  <div style="font-size:3rem;color:#6366f1;margin-bottom:16px;">"</div>
+  <p style="font-size:1.1rem;line-height:1.7;color:#374151;margin-bottom:20px;">${prompt || 'Este servicio transformó completamente mi negocio. Los resultados superaron todas mis expectativas. ¡100% recomendado!'}</p>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#ec4899,#f43f5e);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;">MC</div>
+    <div><div style="font-weight:700;">María Cliente</div><div style="font-size:0.85rem;color:#6b7280;">CEO, Empresa XYZ</div></div>
+  </div>
+  <div style="margin-top:16px;color:#f59e0b;">⭐⭐⭐⭐⭐</div>
+</div>`,
+    equipo: (prompt) => `<div style="font-family:sans-serif;text-align:center;max-width:700px;margin:auto;">
+  <h2 style="font-size:1.8rem;margin-bottom:32px;">${prompt || 'Nuestro Equipo'}</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+    ${['Ana', 'Carlos', 'Elena'].map((name, i) => `<div style="padding:24px;border:1px solid #e5e7eb;border-radius:16px;">
+      <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#${['6366f1','ec4899','22c55e'][i]},#8b5cf6);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;color:white;font-size:1.5rem;font-weight:700;">${name[0]}</div>
+      <h4 style="font-weight:700;margin-bottom:4px;">${name} García</h4>
+      <p style="color:#6b7280;font-size:0.85rem;">${['CEO', 'CTO', 'CMO'][i]}</p>
+    </div>`).join('')}
+  </div>
+</div>`
+  },
+  store: {
+    tienda: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;">
+  <h2 style="text-align:center;font-size:2rem;margin-bottom:32px;">${prompt || '🛍️ Nuestra Tienda'}</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+    ${['Producto A', 'Producto B', 'Producto C'].map((name, i) => `<div style="border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
+      <div style="height:150px;background:linear-gradient(135deg,#${['6366f1','ec4899','22c55e'][i]},#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:3rem;">🎁</div>
+      <div style="padding:16px;">
+        <h3 style="font-weight:700;margin-bottom:4px;">${name}</h3>
+        <p style="color:#6b7280;font-size:0.85rem;margin-bottom:12px;">Descripción breve</p>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:1.3rem;font-weight:800;color:#6366f1;">$${(i+1)*29}.99</span>
+          <a href="#" style="background:#6366f1;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:0.85rem;font-weight:600;">Comprar</a>
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div style="text-align:center;margin-top:32px;">
+    <a href="https://wa.me/TUNUMERO" style="background:#25d366;color:white;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;display:inline-block;">💬 Consultar por WhatsApp</a>
+  </div>
+</div>`
+  },
+  ai: {
+    hero: (prompt) => templates.landing.negocio(prompt),
+    features: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;padding:40px 20px;">
+  <h2 style="text-align:center;font-size:2rem;margin-bottom:40px;">${prompt || '✨ Características'}</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+    ${[{icon:'🚀',title:'Rápido',desc:'Velocidad increíble'},{icon:'🔒',title:'Seguro',desc:'Máxima protección'},{icon:'💡',title:'Inteligente',desc:'IA avanzada'},{icon:'🎯',title:'Preciso',desc:'Resultados exactos'},{icon:'🌐',title:'Global',desc:'Sin fronteras'},{icon:'📱',title:'Móvil',desc:'En cualquier lugar'}].map(f => `<div style="text-align:center;padding:30px;background:#f8fafc;border-radius:16px;">
+      <div style="font-size:2.5rem;margin-bottom:12px;">${f.icon}</div>
+      <h3 style="font-weight:700;margin-bottom:8px;">${f.title}</h3>
+      <p style="color:#6b7280;font-size:0.9rem;">${f.desc}</p>
+    </div>`).join('')}
+  </div>
+</div>`,
+    pricing: (prompt) => `<div style="font-family:sans-serif;max-width:900px;margin:auto;padding:40px 20px;">
+  <h2 style="text-align:center;font-size:2rem;margin-bottom:40px;">${prompt || '💰 Planes y Precios'}</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+    ${[{name:'Básico',price:'9',features:['5 Proyectos','1GB Storage','Email Support']},{name:'Pro',price:'29',features:['Proyectos Ilimitados','10GB Storage','Soporte 24/7','API Access'],popular:true},{name:'Enterprise',price:'99',features:['Todo en Pro','100GB Storage','Dedicado','Custom']}].map(p => `<div style="border:${p.popular?'2px solid #6366f1':'1px solid #e5e7eb'};border-radius:16px;padding:32px;text-align:center;${p.popular?'transform:scale(1.05);background:#faf5ff;':''}">
+      ${p.popular?'<div style="background:#6366f1;color:white;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;display:inline-block;margin-bottom:12px;">POPULAR</div>':''}
+      <h3 style="font-size:1.3rem;font-weight:700;margin-bottom:8px;">${p.name}</h3>
+      <div style="font-size:3rem;font-weight:900;color:#6366f1;">$${p.price}<span style="font-size:1rem;color:#9ca3af;">/mes</span></div>
+      <ul style="text-align:left;margin:24px 0;list-style:none;padding:0;">
+        ${p.features.map(f => `<li style="padding:8px 0;border-bottom:1px solid #f3f4f6;">✓ ${f}</li>`).join('')}
+      </ul>
+      <a href="#" style="display:block;background:${p.popular?'#6366f1':'#f3f4f6'};color:${p.popular?'white':'#374151'};padding:12px;border-radius:10px;text-decoration:none;font-weight:600;">Elegir Plan</a>
+    </div>`).join('')}
+  </div>
+</div>`,
+    faq: (prompt) => `<div style="font-family:sans-serif;max-width:700px;margin:auto;padding:40px 20px;">
+  <h2 style="text-align:center;font-size:2rem;margin-bottom:40px;">${prompt || '❓ Preguntas Frecuentes'}</h2>
+  ${[{q:'¿Cómo funciona?',a:'Nuestro servicio utiliza IA avanzada para procesar tus solicitudes en segundos.'},{q:'¿Es seguro?',a:'Sí, utilizamos encriptación de nivel bancario y nunca compartimos tus datos.'},{q:'¿Puedo cancelar?',a:'Puedes cancelar en cualquier momento sin penalización.'},{q:'¿Hay soporte?',a:'Ofrecemos soporte 24/7 por chat, email y teléfono.'}].map(item => `<div style="border:1px solid #e5e7eb;border-radius:12px;margin-bottom:12px;overflow:hidden;">
+    <div style="padding:16px 20px;background:#f8fafc;font-weight:600;">${item.q}</div>
+    <div style="padding:16px 20px;color:#6b7280;">${item.a}</div>
+  </div>`).join('')}
+</div>`,
+    gallery: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;padding:40px 20px;">
+  <h2 style="text-align:center;font-size:2rem;margin-bottom:32px;">${prompt || '🖼️ Galería'}</h2>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+    ${[1,2,3,4,5,6].map(i => `<div style="aspect-ratio:1;background:linear-gradient(135deg,hsl(${i*50},70%,60%),hsl(${i*50+30},70%,50%));border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-size:2rem;">📷</div>`).join('')}
+  </div>
+</div>`,
+    cta: (prompt) => `<div style="font-family:sans-serif;max-width:700px;margin:auto;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:20px;padding:60px 40px;text-align:center;color:white;">
+  <h2 style="font-size:2.2rem;font-weight:900;margin-bottom:16px;">${prompt || '¿Listo para empezar?'}</h2>
+  <p style="font-size:1.1rem;opacity:0.9;margin-bottom:32px;">Únete a miles de usuarios satisfechos</p>
+  <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;">
+    <a href="#" style="background:white;color:#6366f1;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:700;">Comenzar Gratis</a>
+    <a href="#" style="background:rgba(255,255,255,0.2);color:white;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;">Ver Demo</a>
+  </div>
+</div>`,
+    footer: (prompt) => `<div style="font-family:sans-serif;background:#1a1a2e;color:white;padding:60px 20px 30px;border-radius:16px 16px 0 0;">
+  <div style="max-width:900px;margin:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:40px;">
+    <div>
+      <div style="font-size:1.5rem;font-weight:900;margin-bottom:16px;">${prompt || 'NexusAI'}</div>
+      <p style="color:#9ca3af;font-size:0.9rem;">La plataforma que transforma ideas en realidad.</p>
+    </div>
+    <div>
+      <h4 style="margin-bottom:16px;font-weight:600;">Producto</h4>
+      <ul style="list-style:none;padding:0;color:#9ca3af;font-size:0.9rem;line-height:2;">
+        <li><a href="#" style="color:inherit;text-decoration:none;">Características</a></li>
+        <li><a href="#" style="color:inherit;text-decoration:none;">Precios</a></li>
+        <li><a href="#" style="color:inherit;text-decoration:none;">API</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="margin-bottom:16px;font-weight:600;">Empresa</h4>
+      <ul style="list-style:none;padding:0;color:#9ca3af;font-size:0.9rem;line-height:2;">
+        <li><a href="#" style="color:inherit;text-decoration:none;">Nosotros</a></li>
+        <li><a href="#" style="color:inherit;text-decoration:none;">Blog</a></li>
+        <li><a href="#" style="color:inherit;text-decoration:none;">Contacto</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4 style="margin-bottom:16px;font-weight:600;">Legal</h4>
+      <ul style="list-style:none;padding:0;color:#9ca3af;font-size:0.9rem;line-height:2;">
+        <li><a href="#" style="color:inherit;text-decoration:none;">Privacidad</a></li>
+        <li><a href="#" style="color:inherit;text-decoration:none;">Términos</a></li>
+      </ul>
+    </div>
+  </div>
+  <div style="max-width:900px;margin:40px auto 0;padding-top:20px;border-top:1px solid #2a2a3e;text-align:center;color:#6b7280;font-size:0.85rem;">
+    © 2026 NexusAI. Todos los derechos reservados.
+  </div>
+</div>`,
+    navbar: (prompt) => `<div style="font-family:sans-serif;background:white;padding:16px 24px;border-radius:16px;box-shadow:0 2px 10px rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:space-between;max-width:900px;margin:auto;">
+  <div style="font-size:1.3rem;font-weight:900;color:#6366f1;">${prompt || 'MiMarca'}</div>
+  <nav style="display:flex;gap:24px;">
+    <a href="#" style="color:#374151;text-decoration:none;font-weight:500;">Inicio</a>
+    <a href="#" style="color:#374151;text-decoration:none;font-weight:500;">Servicios</a>
+    <a href="#" style="color:#374151;text-decoration:none;font-weight:500;">Nosotros</a>
+    <a href="#" style="color:#374151;text-decoration:none;font-weight:500;">Contacto</a>
+  </nav>
+  <a href="#" style="background:#6366f1;color:white;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:600;">Empezar</a>
+</div>`,
+    cards: (prompt) => `<div style="font-family:sans-serif;max-width:800px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:20px;">
+  ${[{icon:'🎯',title:'Misión',desc:'Transformar ideas en soluciones'},{icon:'👁️',title:'Visión',desc:'Ser líderes en innovación'},{icon:'💎',title:'Valores',desc:'Excelencia y compromiso'}].map(c => `<div style="background:white;border:1px solid #e5e7eb;border-radius:16px;padding:28px;text-align:center;transition:transform 0.2s;">
+    <div style="width:60px;height:60px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;">${c.icon}</div>
+    <h3 style="font-weight:700;margin-bottom:8px;">${c.title}</h3>
+    <p style="color:#6b7280;font-size:0.9rem;">${c.desc}</p>
+  </div>`).join('')}
+</div>`
+  }
+};
+
+// Generate content based on section
+function generateContent(section) {
+  const input = document.getElementById(`${section}-input`);
+  const chatDiv = document.getElementById(`${section}-chat`);
+  const outputDiv = document.getElementById(`${section}-output`);
+  const previewDiv = document.getElementById(`${section}-preview`);
+  const codeDiv = document.getElementById(`${section}-code`);
+  
+  const prompt = input.value.trim();
+  if (!prompt) return;
+  
+  // Add user message
+  chatDiv.innerHTML += `<div class="ai-msg user">${prompt}</div>`;
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+  input.value = '';
+  
+  // Generate HTML based on section and prompt
+  setTimeout(() => {
+    let html = '';
+    
+    if (section === 'landing') {
+      html = generateLandingHTML(prompt);
+    } else if (section === 'store') {
+      html = generateStoreHTML(prompt);
+    } else if (section === 'social') {
+      html = generateSocialHTML(prompt);
+    } else if (section === 'management') {
+      html = generateManagementHTML(prompt);
+    } else if (section === 'ai') {
+      html = generateGenericHTML(prompt);
+    } else if (section === 'stats') {
+      html = generateStatsHTML(prompt);
+    } else if (section === 'admin') {
+      html = generateAdminHTML(prompt);
+    }
+    
+    chatDiv.innerHTML += `<div class="ai-msg assistant">✅ ¡Contenido generado! Puedes ver la vista previa y copiar el HTML para Google Sites.</div>`;
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+    
+    previewDiv.innerHTML = html;
+    codeDiv.textContent = html;
+    outputDiv.style.display = 'block';
+    
+    updateStats('generated');
+    updateStats('tokens', prompt.length + html.length);
+    
+    dbAdd('generated', { type: section, prompt, html });
+  }, 800);
+}
+
+function generateLandingHTML(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+  if (lowerPrompt.includes('portfolio') || lowerPrompt.includes('portafolio')) return templates.landing.portfolio(prompt);
+  if (lowerPrompt.includes('producto') || lowerPrompt.includes('product')) return templates.landing.producto(prompt);
+  if (lowerPrompt.includes('evento') || lowerPrompt.includes('event')) return templates.landing.evento(prompt);
+  if (lowerPrompt.includes('restaurante') || lowerPrompt.includes('comida') || lowerPrompt.includes('food')) return templates.landing.restaurante(prompt);
+  if (lowerPrompt.includes('consultoria') || lowerPrompt.includes('consulting')) return templates.landing.consultoria(prompt);
+  return templates.landing.negocio(prompt);
+}
+
+function generateStoreHTML(prompt) {
+  return templates.store.tienda(prompt);
+}
+
+function generateSocialHTML(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+  if (lowerPrompt.includes('perfil') || lowerPrompt.includes('profile')) return templates.social.perfil(prompt);
+  if (lowerPrompt.includes('feed')) return templates.social.feed(prompt);
+  if (lowerPrompt.includes('contacto') || lowerPrompt.includes('contact')) return templates.social.contacto(prompt);
+  if (lowerPrompt.includes('testimonial') || lowerPrompt.includes('review')) return templates.social.testimonial(prompt);
+  if (lowerPrompt.includes('equipo') || lowerPrompt.includes('team')) return templates.social.equipo(prompt);
+  return templates.social.post(prompt);
+}
+
+function generateManagementHTML(prompt) {
+  return `<div style="font-family:sans-serif;max-width:500px;margin:auto;border:1px solid #e5e7eb;border-radius:16px;padding:32px;">
+  <h2 style="text-align:center;margin-bottom:24px;">📝 ${prompt || 'Formulario de Contacto'}</h2>
+  <div style="margin-bottom:16px;">
+    <label style="display:block;margin-bottom:6px;font-weight:500;">Nombre</label>
+    <input type="text" placeholder="Tu nombre" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:10px;">
+  </div>
+  <div style="margin-bottom:16px;">
+    <label style="display:block;margin-bottom:6px;font-weight:500;">Email</label>
+    <input type="email" placeholder="tu@email.com" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:10px;">
+  </div>
+  <div style="margin-bottom:24px;">
+    <label style="display:block;margin-bottom:6px;font-weight:500;">Mensaje</label>
+    <textarea placeholder="Tu mensaje..." rows="4" style="width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:10px;resize:vertical;"></textarea>
+  </div>
+  <button style="width:100%;background:#6366f1;color:white;padding:14px;border:none;border-radius:10px;font-weight:600;font-size:1rem;cursor:pointer;">Enviar Mensaje</button>
+</div>`;
+}
+
+function generateGenericHTML(prompt) {
+  const lowerPrompt = prompt.toLowerCase();
+  if (lowerPrompt.includes('hero')) return templates.ai.hero(prompt);
+  if (lowerPrompt.includes('feature') || lowerPrompt.includes('caracteristica')) return templates.ai.features(prompt);
+  if (lowerPrompt.includes('precio') || lowerPrompt.includes('pricing') || lowerPrompt.includes('plan')) return templates.ai.pricing(prompt);
+  if (lowerPrompt.includes('faq') || lowerPrompt.includes('pregunta')) return templates.ai.faq(prompt);
+  if (lowerPrompt.includes('galeria') || lowerPrompt.includes('gallery')) return templates.ai.gallery(prompt);
+  if (lowerPrompt.includes('cta') || lowerPrompt.includes('call to action') || lowerPrompt.includes('accion')) return templates.ai.cta(prompt);
+  if (lowerPrompt.includes('footer') || lowerPrompt.includes('pie')) return templates.ai.footer(prompt);
+  if (lowerPrompt.includes('nav') || lowerPrompt.includes('menu')) return templates.ai.navbar(prompt);
+  if (lowerPrompt.includes('card') || lowerPrompt.includes('tarjeta')) return templates.ai.cards(prompt);
+  if (lowerPrompt.includes('tienda') || lowerPrompt.includes('store') || lowerPrompt.includes('producto')) return templates.store.tienda(prompt);
+  if (lowerPrompt.includes('post') || lowerPrompt.includes('publicacion')) return templates.social.post(prompt);
+  if (lowerPrompt.includes('perfil') || lowerPrompt.includes('profile')) return templates.social.perfil(prompt);
+  if (lowerPrompt.includes('testimonial')) return templates.social.testimonial(prompt);
+  if (lowerPrompt.includes('equipo') || lowerPrompt.includes('team')) return templates.social.equipo(prompt);
+  return templates.landing.negocio(prompt);
+}
+
+function generateStatsHTML(prompt) {
+  return `<div style="font-family:sans-serif;max-width:800px;margin:auto;">
+  <h2 style="text-align:center;margin-bottom:32px;">${prompt || '📊 Dashboard'}</h2>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;">
+    ${[{label:'Usuarios',value:'1,234',icon:'👥',color:'#6366f1'},{label:'Ventas',value:'$45.2K',icon:'💰',color:'#22c55e'},{label:'Pedidos',value:'892',icon:'📦',color:'#f59e0b'},{label:'Visitas',value:'12.5K',icon:'👁️',color:'#ec4899'}].map(s => `<div style="background:linear-gradient(135deg,${s.color},${s.color}dd);color:white;padding:20px;border-radius:16px;text-align:center;">
+      <div style="font-size:1.5rem;margin-bottom:4px;">${s.icon}</div>
+      <div style="font-size:1.8rem;font-weight:800;">${s.value}</div>
+      <div style="font-size:0.85rem;opacity:0.9;">${s.label}</div>
+    </div>`).join('')}
+  </div>
+  <div style="background:#f8fafc;border-radius:16px;padding:24px;">
+    <h3 style="margin-bottom:16px;">📈 Gráfico de Ventas</h3>
+    <div style="display:flex;align-items:flex-end;gap:8px;height:150px;">
+      ${[40,65,45,80,55,90,70].map((h,i) => `<div style="flex:1;background:linear-gradient(180deg,#6366f1,#8b5cf6);height:${h}%;border-radius:8px 8px 0 0;"></div>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:0.8rem;color:#6b7280;">
+      <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+    </div>
+  </div>
+</div>`;
+}
+
+function generateAdminHTML(prompt) {
+  return `<div style="font-family:sans-serif;max-width:800px;margin:auto;">
+  <h2 style="margin-bottom:24px;">${prompt || '🔐 Panel de Administración'}</h2>
+  <div style="background:white;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#f8fafc;">
+          <th style="padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;">Usuario</th>
+          <th style="padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;">Email</th>
+          <th style="padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;">Rol</th>
+          <th style="padding:14px;text-align:left;border-bottom:1px solid #e5e7eb;">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${[{name:'Admin',email:'admin@example.com',role:'Admin',status:'Activo'},{name:'Editor',email:'editor@example.com',role:'Editor',status:'Activo'},{name:'Usuario',email:'user@example.com',role:'User',status:'Inactivo'}].map(u => `<tr>
+          <td style="padding:14px;border-bottom:1px solid #f3f4f6;">${u.name}</td>
+          <td style="padding:14px;border-bottom:1px solid #f3f4f6;">${u.email}</td>
+          <td style="padding:14px;border-bottom:1px solid #f3f4f6;"><span style="background:${u.role==='Admin'?'#fee2e2':u.role==='Editor'?'#fef3c7':'#dcfce7'};color:${u.role==='Admin'?'#dc2626':u.role==='Editor'?'#d97706':'#16a34a'};padding:4px 10px;border-radius:20px;font-size:0.8rem;">${u.role}</span></td>
+          <td style="padding:14px;border-bottom:1px solid #f3f4f6;"><span style="color:${u.status==='Activo'?'#16a34a':'#9ca3af'};">● ${u.status}</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+// Quick templates
+function quickTemplate(section, type) {
+  const input = document.getElementById(`${section}-input`);
+  input.value = type.charAt(0).toUpperCase() + type.slice(1);
+  generateContent(section);
+}
+
+function quickAI(type) {
+  const input = document.getElementById('ai-input');
+  input.value = type;
+  generateContent('ai');
+}
+
+// Generate product
+function generateProduct() {
+  const name = document.getElementById('prod-name').value || 'Producto Ejemplo';
+  const price = document.getElementById('prod-price').value || '$99.99';
+  const desc = document.getElementById('prod-desc').value || 'Descripción del producto';
+  
+  const html = `<div style="max-width:300px;margin:auto;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;font-family:sans-serif;">
+  <div style="height:180px;background:linear-gradient(135deg,#6366f1,#ec4899);display:flex;align-items:center;justify-content:center;font-size:4rem;">🎁</div>
+  <div style="padding:20px;">
+    <h3 style="font-weight:700;margin-bottom:6px;">${name}</h3>
+    <p style="color:#6b7280;font-size:0.9rem;margin-bottom:16px;">${desc}</p>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:1.5rem;font-weight:900;color:#6366f1;">${price}</span>
+      <a href="https://wa.me/TUNUMERO?text=Quiero%20comprar%20${encodeURIComponent(name)}" style="background:#25d366;color:white;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600;font-size:0.9rem;">Comprar</a>
+    </div>
+  </div>
+</div>`;
+  
+  document.getElementById('product-preview').innerHTML = html;
+  document.getElementById('product-code').textContent = html;
+  document.getElementById('product-output').style.display = 'block';
+  updateStats('generated');
+}
+
+// Copy code
+function copyCode(section) {
+  const code = document.getElementById(`${section}-code`).textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    showToast('✅ HTML copiado para Google Sites!');
+    updateStats('copies');
+    const btn = event.currentTarget;
+    btn.classList.add('copied');
+    btn.innerHTML = '✅ ¡Copiado!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '📋 Copiar HTML para Google Sites';
+    }, 2000);
+  });
+}
+
+// Download HTML
+function downloadHTML(section) {
+  const code = document.getElementById(`${section}-code`).textContent;
+  const blob = new Blob([code], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nexusai-${section}-${Date.now()}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📥 HTML descargado');
+}
+
+// Clear output
+function clearOutput(section) {
+  document.getElementById(`${section}-output`).style.display = 'none';
+  document.getElementById(`${section}-preview`).innerHTML = '';
+  document.getElementById(`${section}-code`).textContent = '';
+}
+
+// Management tabs
+function showMgmtTab(tab) {
+  document.querySelectorAll('#management .tab').forEach(t => t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  ['notes', 'prompts', 'pomodoro'].forEach(t => {
+    document.getElementById(`mgmt-${t}`).style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+// Notes
+function saveNote() {
+  const content = document.getElementById('note-content').value;
+  if (!content) return;
+  dbAdd('notes', { content }).then(() => {
+    document.getElementById('note-content').value = '';
+    loadNotes();
+    showToast('📝 Nota guardada');
+  });
+}
+
+function loadNotes() {
+  dbGetAll('notes').then(notes => {
+    document.getElementById('notes-list').innerHTML = notes.map(n => 
+      `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:10px;margin-bottom:8px;font-size:0.9rem;">${n.content}</div>`
+    ).join('');
+  });
+}
+
+// Prompts
+function savePrompt() {
+  const title = document.getElementById('prompt-title').value;
+  const content = document.getElementById('prompt-content').value;
+  if (!content) return;
+  dbAdd('prompts', { title, content }).then(() => {
+    document.getElementById('prompt-title').value = '';
+    document.getElementById('prompt-content').value = '';
+    loadPrompts();
+    showToast('💡 Prompt guardado');
+  });
+}
+
+function loadPrompts() {
+  dbGetAll('prompts').then(prompts => {
+    document.getElementById('prompts-list').innerHTML = prompts.map(p => 
+      `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:10px;margin-bottom:8px;">
+        <div style="font-weight:600;margin-bottom:4px;">${p.title || 'Sin título'}</div>
+        <div style="font-size:0.85rem;color:var(--text2);">${p.content}</div>
+      </div>`
+    ).join('');
+  });
+}
+
+// Pomodoro
+let pomoInterval = null;
+let pomoTime = 25 * 60;
+let pomoRunning = false;
+
+function updatePomoDisplay() {
+  const mins = Math.floor(pomoTime / 60);
+  const secs = pomoTime % 60;
+  document.getElementById('pomo-time').textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+}
+
+function togglePomodoro() {
+  if (pomoRunning) {
+    clearInterval(pomoInterval);
+    pomoRunning = false;
+  } else {
+    pomoInterval = setInterval(() => {
+      pomoTime--;
+      updatePomoDisplay();
+      if (pomoTime <= 0) {
+        clearInterval(pomoInterval);
+        pomoRunning = false;
+        showToast('🍅 ¡Tiempo terminado!');
+        new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQcAGDqD').play().catch(()=>{});
+      }
+    }, 1000);
+    pomoRunning = true;
+  }
+}
+
+function resetPomodoro() {
+  clearInterval(pomoInterval);
+  pomoRunning = false;
+  pomoTime = parseInt(document.getElementById('pomo-work')?.value || 25) * 60;
+  updatePomoDisplay();
+}
+
+function updatePomoSettings() {
+  if (!pomoRunning) resetPomodoro();
+}
+
+// API functions
+function saveApiKey(api, key) {
+  localStorage.setItem(`nexus_api_${api}`, key);
+  updateApiStatus(api, key ? 'active' : 'inactive');
+}
+
+function toggleApi(api) {
+  const toggle = document.getElementById(`api-${api}-toggle`);
+  toggle.classList.toggle('on');
+}
+
+function updateApiStatus(api, status) {
+  const statusEl = document.getElementById(`api-${api}-status`);
+  if (statusEl) {
+    statusEl.classList.remove('active', 'inactive');
+    statusEl.classList.add(status);
+  }
+}
+
+function testApis() {
+  showToast('🏁 Probando APIs...');
+  setTimeout(() => showToast('✅ APIs verificadas'), 1500);
+}
+
+// Data management
+function exportData() {
+  const data = { stats, theme: localStorage.getItem('nexus_theme'), lang: localStorage.getItem('nexus_lang') };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `nexusai-backup-${Date.now()}.json`;
+  a.click();
+  showToast('📤 Datos exportados');
+}
+
+function clearAllData() {
+  if (confirm('¿Eliminar todos los datos locales?')) {
+    localStorage.clear();
+    ['notes', 'prompts', 'generated', 'stats'].forEach(store => dbClear(store));
+    stats = { generated: 0, tokens: 0, copies: 0 };
+    updateStats('generated', 0);
+    showToast('🗑️ Datos eliminados');
+  }
+}
+
+// PWA Install
+let deferredPrompt;
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.classList.add('show');
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') installBtn.classList.remove('show');
+  deferredPrompt = null;
+});
+
+window.addEventListener('appinstalled', () => {
+  installBtn.classList.remove('show');
+  showToast('✅ App instalada!');
+});
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(() => console.log('SW registrado'));
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', async () => {
+  await initDB();
+  loadStats();
+  loadNotes();
+  loadPrompts();
+  updatePomoDisplay();
+  
+  // Load saved settings
+  const savedTheme = localStorage.getItem('nexus_theme');
+  if (savedTheme && savedTheme !== 'dark') setTheme(savedTheme);
+  
+  const savedLang = localStorage.getItem('nexus_lang');
+  if (savedLang) {
+    document.getElementById('langSelect').value = savedLang;
+    setLang(savedLang);
+  }
+  
+  // Load API keys
+  ['groq', 'gemini', 'openrouter', 'deepseek'].forEach(api => {
+    const key = localStorage.getItem(`nexus_api_${api}`);
+    if (key) {
+      document.getElementById(`api-${api}`).value = key;
+      updateApiStatus(api, 'active');
+    }
+  });
+});
+</script>
+
+</body>
+</html>

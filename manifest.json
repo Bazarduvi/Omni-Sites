@@ -1,0 +1,33 @@
+{
+  "name": "NexusAI - Plataforma Modular PWA",
+  "short_name": "NexusAI",
+  "description": "Plataforma PWA modular con IA multi-API para crear contenido compatible con Google Sites",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0a0f",
+  "theme_color": "#6366f1",
+  "scope": "/",
+  "lang": "es",
+  "categories": ["productivity", "business", "utilities"],
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Chat IA",
+      "url": "/index.html#ai",
+      "icons": [{"src": "icon.png", "sizes": "512x512"}]
+    },
+    {
+      "name": "Tienda",
+      "url": "/index.html#store",
+      "icons": [{"src": "icon.png", "sizes": "512x512"}]
+    }
+  ]
+}
